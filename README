@@ -2,3 +2,5 @@ rails_assviz allows you to quickly see how your Rails models interrelate with th
 
 Example usage:
 ruby ./rails_assviz.rb --in=~/projects/myrailsapp/ --out=~/Desktop/assviz --format=png,pdf --program=dot
+
+A few changes
