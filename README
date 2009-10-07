@@ -4,3 +4,4 @@ Example usage:
 ruby ./rails_assviz.rb --in=~/projects/myrailsapp/ --out=~/Desktop/assviz --format=png,pdf --program=dot
 
 A few changes
+ruby ./rails_assviz.rb --in=~/projects/cd/rails/panda_lazer/ --out=~/Public/Drop\ Box --format=png,pdf --program=dot
