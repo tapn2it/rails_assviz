@@ -22,11 +22,16 @@ rescue LoadError
   return false
 end
 
+# Singularization rules
+ActiveSupport::Inflector.inflections do |inflect|
+  inflect.singular(/ess$/i, 'ess')
+end
+
 def list_for_help(list_type)
   list = (list_type == :formats ? GraphViz::FORMATS : GraphViz::PROGRAMS)
   f_count=0
   output=""
-  spacer="                                "
+  spacer=" "
   tmp_line = []
   list.each do |f|
     if f_count > 6
@@ -83,7 +88,7 @@ ARGV.each do |arg|
         @options[:in]=File.expand_path(File.join(split_arg[1], "app", "models"))
       else
         puts "ERROR: --in must point to a Rails application's root directory\n\n"
-        stop_executing(:no_help=>true)
+        stop_executing(:no_help => true)
       end
     when "--out"
       if FileTest.writable?(File.expand_path(split_arg[1]))
@@ -96,7 +101,7 @@ ARGV.each do |arg|
       @options[:format] = []
       split_arg[1].split(",").each do |f|
         if GraphViz::FORMATS.index(f)
-          @options[:format]<<f
+          @options[:format] << f
         else
           puts "ERROR: --format must be a list of allowable GraphViz formats\n\n"
           stop_executing(:no_help=>true)
@@ -106,10 +111,10 @@ ARGV.each do |arg|
       @options[:program] = []
       split_arg[1].split(",").each do |p|
         if GraphViz::PROGRAMS.index(p)
-          @options[:program]<<p
+          @options[:program] << p
         else
           puts "ERROR: --program must be a list of allowable GraphViz programs\n\n"
-          stop_executing(:no_help=>true)
+          stop_executing(:no_help => true)
         end
       end
     else
@@ -119,7 +124,7 @@ end
 
 #set defaults if not assigned from ARGV
 @options[:in] = (FileTest.readable?(File.expand_path(File.join(Dir.getwd, "app", "models"))) ? File.expand_path(File.join(Dir.getwd, "app", "models")) : stop_executing) if @options[:in].nil?
-@options[:out] = (FileTest.writable?(File.expand_path(File.join(Dir.getwd))) ? File.expand_path(File.join(Dir.getwd)) : stop_executing)  if @options[:out].nil?
+@options[:out] = (FileTest.writable?(File.expand_path(File.join(Dir.getwd))) ? File.expand_path(File.join(Dir.getwd)) : stop_executing) if @options[:out].nil?
 @options[:format] = ["png"] if @options[:format].nil?
 @options[:program] = ["dot"] if @options[:program].nil?
 
@@ -129,22 +134,28 @@ nodes = []
 edges = []
 
 # Dir.foreach(@options[:in]) do |file| 
-results = []
 pattern = '.rb'
 models = list_directories @options[:in], /.rb$/
+puts "\nModels"
+puts models.join(" \n")
 models.each do |file|
-  nodes << file.gsub(".rb", "").singularize unless file =~ /\A\.+/
+  file_name = file.split('/').last.sub('.rb', '').singularize
+  nodes << file_name.singularize
   unless file =~ /\A\.\.?\Z/
     IO.readlines(file).each do |line|
       if (line =~ /\A *?((has_many)|(belongs_to)|(has_and_belongs_to_many)|(has_one))/).is_a?(Integer)
-        edges << [file.gsub(".rb", ""), line]
+        edges << [file_name, line]
       end
     end
   end
 end
 
 nodes.uniq!
+puts "\nNodes"
+puts nodes.join(" \n")
 
+puts "\nEdges"
+puts edges.join(" \n")
 # build the edge relationships
 edges.each do |e|
   e[1].gsub!( /\A *?((has_many)|(belongs_to)|(has_and_belongs_to_many)|(has_one)) +:(\w+).*/m, '\6%\1')
@@ -152,12 +163,19 @@ edges.each do |e|
   e[2] = f[0].gsub(".rb", "").singularize
   e[1] = f[1]
 end
-edges.delete_if{|e|e[1]=="belongs_to"}
+
+edges.delete_if do |edge|
+  next unless edge[1] == 'belongs_to'
+  edge_node = edges.map {|a| a if a[0] == edge[2] and a[2] == edge[0] and a[1] == 'has_many'}.compact
+  puts "edge: #{edge.join(', ')}"
+  puts "edge_node: #{edge_node.join(', ')}"
+  edge_node.blank? ? false : true
+end
 
 # put everything together with graphviz
-g = GraphViz::new( "structs", "type" => "graph", :use => "dot" )
+g = GraphViz::new( "structs", "type" => "graph", :use => "dot", :path => '/usr/local/bin/' )
 g[:rankdir] = "LR"
-g[:sep] = "+8"
+g[:sep] = "+5"
 g[:overlap] = "false"
 g.edge[:color] = "#999999"
 g.edge[:fontname] = g.node[:fontname] = "Verdana"
